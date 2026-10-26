@@ -345,8 +345,8 @@ All automated releases and deployments are orchestrated via GitHub Actions (`.gi
 
 - **Single Source of Truth for Versioning:** Versioning is driven by `"version"` in the root `package.json`.
 - **Automated Verification:** Every push to `main` runs workspace typechecking (`npm run typecheck`) and all test suites (`npm run test`).
-- **Web App Deployment:** Automatically compiles and deploys `apps/web` to GitHub Pages.
-- **Extension Release Packaging:** Compiles `packages/extension/dist`, creates `shareworks-bridge-extension-vX.Y.Z.zip`, and automatically generates a GitHub Release tagged `vX.Y.Z` with commit comparison logs.
+- **Version-Gated Deployment & Releases:** Both the GitHub Pages deployment and the extension GitHub Release only execute when the root `package.json` version has been updated (or triggered manually with `force_deploy`), preventing redundant releases on minor commits or docs updates.
+- **Extension Release Packaging:** When a version bump occurs, compiles `packages/extension/dist`, creates `shareworks-bridge-extension-vX.Y.Z.zip`, and automatically generates a GitHub Release tagged `vX.Y.Z` with commit comparison logs.
 
 ---
 

@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force deploy to GitHub Pages and publish release even if version unchanged'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.pkg-version.outputs.version }}
+      version_changed: ${{ steps.pkg-version.outputs.version_changed }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,14 +52,73 @@ jobs:
       - name: Build web dashboard and companion extension
         run: npm run build
 
-      - name: Extract version from root package.json
+      - name: Extract version and check for version change
         id: pkg-version
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Target release version from package.json: v${VERSION}"
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+          echo "Target version from package.json: v${CURRENT_VERSION}"
+
+          # Allow manual workflow_dispatch with force_deploy=true
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.force_deploy }}" = "true" ]; then
+            echo "Workflow manually triggered with force_deploy=true."
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Determine base commit to compare against
+          BEFORE_SHA="${{ github.event.before }}"
+          BASE_REF=""
+          if [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            if git rev-parse --verify "$BEFORE_SHA" >/dev/null 2>&1; then
+              BASE_REF="$BEFORE_SHA"
+            fi
+          fi
+
+          # Fallback to HEAD~1 if BEFORE_SHA is unavailable or invalid
+          if [ -z "$BASE_REF" ]; then
+            if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+              BASE_REF="HEAD~1"
+            fi
+          fi
+
+          PREV_VERSION=""
+          if [ -n "$BASE_REF" ]; then
+            PREV_VERSION=$(git show "${BASE_REF}:package.json" 2>/dev/null | node -e "let d=''; process.stdin.on('data', c => d += c); process.stdin.on('end', () => { try { console.log(JSON.parse(d).version || ''); } catch { console.log(''); } });")
+            echo "Previous package.json version (${BASE_REF}): v${PREV_VERSION}"
+          else
+            echo "No previous commit found in history."
+          fi
+
+          TAG_EXISTS=false
+          if git rev-parse --verify "refs/tags/v${CURRENT_VERSION}" >/dev/null 2>&1; then
+            TAG_EXISTS=true
+            echo "Git tag v${CURRENT_VERSION} already exists."
+          fi
+
+          if [ -z "$PREV_VERSION" ]; then
+            if [ "$TAG_EXISTS" = "true" ]; then
+              echo "Initial commit or missing base ref, but tag v${CURRENT_VERSION} already exists. Skipping deploy and release."
+              echo "version_changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "New initial version detected: v${CURRENT_VERSION}."
+              echo "version_changed=true" >> $GITHUB_OUTPUT
+            fi
+          elif [ "$PREV_VERSION" != "$CURRENT_VERSION" ]; then
+            if [ "$TAG_EXISTS" = "true" ]; then
+              echo "Version in package.json changed from v${PREV_VERSION} to v${CURRENT_VERSION}, but tag v${CURRENT_VERSION} already exists. Skipping deploy and release."
+              echo "version_changed=false" >> $GITHUB_OUTPUT
+            else
+              echo "Version changed from v${PREV_VERSION} to v${CURRENT_VERSION}. Deploy and release will run."
+              echo "version_changed=true" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "Version unchanged (still v${CURRENT_VERSION}). Deploy and release will be skipped."
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Package extension artifact into ZIP
+        if: steps.pkg-version.outputs.version_changed == 'true'
         run: |
           VERSION="${{ steps.pkg-version.outputs.version }}"
           cd packages/extension/dist
@@ -60,11 +126,13 @@ jobs:
           cd ../../..
 
       - name: Upload GitHub Pages artifact
+        if: steps.pkg-version.outputs.version_changed == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: apps/web/dist
 
       - name: Upload extension ZIP artifact for workflow
+        if: steps.pkg-version.outputs.version_changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: extension-zip
@@ -74,6 +142,7 @@ jobs:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: build-and-test
+    if: needs.build-and-test.outputs.version_changed == 'true'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -86,6 +155,7 @@ jobs:
     name: Publish Extension Release
     runs-on: ubuntu-latest
     needs: build-and-test
+    if: needs.build-and-test.outputs.version_changed == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
