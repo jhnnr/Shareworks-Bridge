@@ -2,7 +2,6 @@
 
 > **Secure, local-first bridge and dashboard for Morgan Stanley Shareworks equity holdings, vesting schedules, and exercise modeling.**
 
-[![Build & Test](https://github.com/JohnnyH/Shareworks-Bridge/actions/workflows/deploy-release.yml/badge.svg)](https://github.com/JohnnyH/Shareworks-Bridge/actions/workflows/deploy-release.yml)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
