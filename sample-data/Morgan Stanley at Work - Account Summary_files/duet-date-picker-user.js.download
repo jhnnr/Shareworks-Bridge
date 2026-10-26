@@ -1,0 +1,253 @@
+let holidayDates = [];
+const DUET_DATEPICKER_FORMAT = 'YYYY-MM-DD';
+
+function parseDate(id, value) {
+    let datePicker = document.getElementById(id);
+    let language = datePicker.getAttribute("language");
+    let expectedDateFormat = DUET_DATEPICKER_FORMAT;
+    let prefersMiddleEndianDateInput = datePicker.getAttribute("prefersMiddleEndianDateInput");
+    let formattedDate = value ? value : document.querySelector('input#' + id).value;
+
+    formattedDate = replaceAllInstances(",", " ", formattedDate);
+    formattedDate = regExTrim(formattedDate);
+
+    let date;
+    let acceptedParseMomentFormats = prefersMiddleEndianDateInput ? [expectedDateFormat].concat(['MM DD YYYY', 'DD MM YYYY', 'YYYY MM DD']) :
+                                     [expectedDateFormat].concat(['DD MM YYYY', 'MM DD YYYY', 'YYYY MM DD']);
+
+    moment.lang(language);
+    for (let i = 0; i < acceptedParseMomentFormats.length; i++) {
+        let currParseMomentFormat = acceptedParseMomentFormats[i];
+        let dateRegexp = getDateFormatRegex(currParseMomentFormat);
+        let match = formattedDate.match(dateRegexp);
+        if (match !== null) {
+            if (currParseMomentFormat.indexOf('Y') == -1) {
+                let year = new Date().getFullYear();
+                currParseMomentFormat += " YYYY";
+                formattedDate += " " + year;
+            }
+            date = moment(formattedDate, getOrderedDateFormats(currParseMomentFormat));
+            if (date.isValid()) {
+                return date;
+            }
+        }
+    }
+
+}
+
+function replaceAllInstances(find, replace, str) {
+    return str.replace(new RegExp(find, 'g'), replace);
+}
+
+function regExTrim(str) {
+    return str.replace(/^\s+|\s+$/gm, '');
+}
+
+function getDateFormatRegex(momentFormat) {
+    return new RegExp("^" + momentFormat.replace(/[ \-/]+/g, "[ \\-/]+")// be flexible with the seperators(space,dash,slash)
+                              .replace(/D+/, "(\\d{1,2})")// 1 to 2 date digits
+                              .replace(/Y+/, "(\\d{4})")// 4 year digits
+                              .replace(/MMM/, "(\\D{1,9})") // 1 to 9 month non-digit characters
+                              .replace(/M{1,2}/, "(\\d{1,2}|\\d{1,2}\\D)") // 1 to 2 month digits, or 1 to 2 month digit with 1 non-digit
+                      + "$");
+}
+
+function getOrderedDateFormats(momentDateFormat) {
+    let monthSub = substituteMonth(momentDateFormat, "M", "MM");
+
+    return [
+        monthSub,
+        momentDateFormat
+    ];
+}
+
+function substituteMonth(s, short, long) {
+    if (s.indexOf(long) === -1) {
+        return s.replace(short, long);
+    } else {
+        return s.replace(long, short);
+    }
+}
+
+function swDateControlInitDuetDatePicker(id, maxDateOffset, minDateOffset, prefersMiddleEndianDateInput, allowHoliday, holidayJSON, ariaRequired, ariaLabel) {
+    let language = 'en';
+    let datePickerTextBox = document.getElementById(id);
+
+    datePickerTextBox.localization = {
+	buttonLabel: 'Choose date',
+	placeholder: 'YYYY-MM-DD',
+	selectedDateMessage: 'Selected date is',
+	prevMonthLabel: 'Previous month',
+	nextMonthLabel: 'Next month',
+	monthSelectLabel: 'Month',
+	yearSelectLabel: 'Year',
+	closeLabel: 'Close window',
+	keyboardInstruction: 'Use arrow keys to navigate dates',
+	calendarHeading: 'Choose a date',
+	dayNames: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+	monthNames: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+	monthNamesShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+	locale: 'en',
+};
+
+;
+
+    datePickerTextBox.firstDayOfWeek = 0;
+    datePickerTextBox.min = minDateOffset === null || minDateOffset === 'null' ? '1900-01-01' : minDateOffset;
+    datePickerTextBox.max = maxDateOffset === null || maxDateOffset === 'null' ? '2050-12-31' : maxDateOffset;
+    datePickerTextBox.role = 'grid';
+
+    datePickerTextBox.setAttribute("prefersMiddleEndianDateInput", prefersMiddleEndianDateInput);
+    datePickerTextBox.setAttribute("language", language);
+
+    holidayDates = holidayJSON;
+
+    if (!allowHoliday) {
+        const pickerDisableHoliday = document.querySelector("duet-date-picker")
+        pickerDisableHoliday.isDateDisabled = isDateHolidayOrWeekend
+    }
+
+    datePickerTextBox
+        .addEventListener("duetBlur",
+                          function (event) {
+                              let formattedDate = parseDate(id, event.detail.value);
+                              if (formattedDate) {
+                                  let month = formattedDate.month() + 1;
+                                  let day = formattedDate.date();
+                                  document.querySelector('input#' + id).value = formattedDate.year() + '-' + addLeadingZero(month) + '-' + addLeadingZero(day);
+                                  document.querySelector('duet-date-picker#' + id).value = formattedDate.year() + '-' + addLeadingZero(month) + '-' + addLeadingZero(day);
+                              } else {
+                                  document.querySelector('input#' + id).value = '';
+                                  document.querySelector('duet-date-picker#' + id).value = '';
+                              }
+                              validateDateField(id, formattedDate, allowHoliday);
+
+                              if (onchange !== null) {
+                                  onchange.apply(undefined);
+                              }
+                          })
+
+    datePickerTextBox
+        .addEventListener("duetChange",
+                          function (event) {
+                              let formattedDate = parseDate(id, event.detail.value);
+                              if (formattedDate) {
+                                  let month = formattedDate.month() + 1;
+                                  let day = formattedDate.date();
+                                  document.querySelector('input#' + id).value = formattedDate.year() + '-' + addLeadingZero(month) + '-' + addLeadingZero(day);
+                              } else {
+                                  document.querySelector('input#' + id).value = '';
+                              }
+                              validateDateField(id, formattedDate, allowHoliday);
+
+                              if (onchange !== null) {
+                                  onchange.apply(undefined);
+                              }
+                          })
+
+    datePickerTextBox
+        .addEventListener("duetFocus",
+                          function (event) {
+                              if (ariaRequired) {
+                                  document.querySelector('input#' + id).setAttribute("aria-required", ariaRequired);
+                              }
+                              if (ariaLabel) {
+                                  document.querySelector('input#' + id).setAttribute("aria-label", ariaLabel);
+                              }
+                          })
+
+    return datePickerTextBox;
+}
+
+function isDateHolidayOrWeekend(date) {
+    if (date instanceof Date) {
+        date = moment(date);
+    }
+    if (date instanceof moment && !isNaN(date)) {
+        if (isWeekend(date)) {
+            return true;
+        }
+
+        if (holidayDates === null) {
+            return false;
+        }
+        for (let i = 0; i < holidayDates.length; i++) {
+            if (date.year() == holidayDates[i][0] && date.month() == holidayDates[i][1] && date.date() == holidayDates[i][2]) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function isWeekend(date) {
+    return (date.day() === 0 || date.day() === 6);
+}
+
+function addLeadingZero(number) {
+    return number < 10 ? '0' + number : number;
+}
+
+function isDateBetweenAllowedRange(selectedDate, minDateOffset, maxDateOffset) {
+    if (selectedDate.isSameOrAfter(minDateOffset) && selectedDate.isSameOrBefore(maxDateOffset)) {
+        return true;
+    }
+    return false;
+}
+
+function validateDateField(id, formattedDate, allowHoliday) {
+    let errorTag = document.getElementById("errortag_till_date_widget");
+    if (errorTag) {
+        document.querySelector('input#' + id).setAttribute("aria-invalid", "false");
+        errorTag.setAttribute("style", "display: none;");
+        let datePickerInputBox = document.getElementById(id);
+        datePickerInputBox.validationFailStatus = false;
+
+        if (formattedDate) {
+            let selectedDate = formattedDate;
+            if (!(selectedDate instanceof moment && !isNaN(selectedDate))) {
+                const errorMsg = "Invalid date";
+                showDateFieldValidationErrorMsg(id, errorMsg);
+                datePickerInputBox.validationFailStatus = true;
+                return;
+            }
+
+            if (!allowHoliday) {
+                let isWeekendDay = isWeekend(selectedDate);
+                if (isWeekendDay) {
+                    const errorMsg = "The good till date cannot be on a weekend";
+                    showDateFieldValidationErrorMsg(id, errorMsg);
+                    datePickerInputBox.validationFailStatus = true;
+                    return;
+                }
+
+                let isHoliday = isDateHolidayOrWeekend(selectedDate);
+                if (isHoliday) {
+                    const errorMsg = "The good till date cannot be on a holiday";
+                    showDateFieldValidationErrorMsg(id, errorMsg);
+                    datePickerInputBox.validationFailStatus = true;
+                    return;
+                }
+            }
+
+            let isDateInAllowedRange = isDateBetweenAllowedRange(selectedDate, moment(datePickerInputBox.min, DUET_DATEPICKER_FORMAT), moment(datePickerInputBox.max, DUET_DATEPICKER_FORMAT));
+            if (!isDateInAllowedRange) {
+                const errorMsg = "The good till date cannot be out of date range";
+                showDateFieldValidationErrorMsg(id, errorMsg);
+                datePickerInputBox.validationFailStatus = true;
+            }
+        } else {
+            const errorMsg = "Date cannot be empty";
+            showDateFieldValidationErrorMsg(id, errorMsg);
+            datePickerInputBox.validationFailStatus = true;
+            return;
+        }
+    }
+}
+
+function showDateFieldValidationErrorMsg(id, errorMsg) {
+    const dateErrorMessage = document.getElementById('limit_order_error_tag_till_date_widget');
+    dateErrorMessage.innerHTML = errorMsg;
+    document.getElementById("errortag_till_date_widget").setAttribute("style", "display: inline; position: absolute; margin-top: 1px;");
+    document.querySelector('input#' + id).setAttribute("aria-invalid", "true");
+}

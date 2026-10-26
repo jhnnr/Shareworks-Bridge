@@ -1,0 +1,87 @@
+/**
+ * @author arjay.aquino
+ * @usage   jQuery(".menu-button").menubutton();
+ *          <a class="sw-button menu-button" href="#menu-more-actions">More Actions <span class="arrow-icon"></span></a>
+ *          <div class="sw-button-menu-popup" id="menu-more-actions"></div>
+ *          The href value for the menu-button must include # with the id of its associated menu popup div.
+ */
+(function ($) {
+
+    $.fn.menubutton = function (options) {
+
+	options = $.extend(true, {}, options);
+
+	return this.each(function () {
+
+	    var $button = $(this);
+	    var $menuPopup = $($button.attr("href"));
+
+	    var openClass = "menu-open";
+	    var canPopupBlur = false;
+	    var popupOnBlurInitialized = false;
+
+
+	    $button.on({
+			   click: function (e) {
+			       e.preventDefault();
+			       if ($button.hasClass(openClass)) {
+				   closePopup();
+			       } else {
+				   openPopup();
+			       }
+			   },
+
+			   mouseenter: function () {
+			       canPopupBlur = false;
+			   },
+
+			   mouseleave: function () {
+			       canPopupBlur = true;
+			   }
+		       });
+
+
+	    function openPopup() {
+		positionPopup();
+		if (!popupOnBlurInitialized) {
+		    initPopupOnBlur();
+		}
+
+		$menuPopup.show();
+		$button.addClass(openClass);
+	    }
+
+	    function closePopup() {
+		$menuPopup.hide();
+		$button.removeClass(openClass);
+	    }
+
+	    function positionPopup() {
+		var posX = $button.position().left;
+		var posY = $button.position().top + $button.outerHeight();
+
+		//if the popup goes beyond the window move it over
+		if ($button.offset().left + $menuPopup.width() > $(window).width()) {
+		    posX = (posX + $button.outerWidth()) - $menuPopup.width();
+		}
+
+		$menuPopup.css({
+				   left: posX + "px",
+				   top: posY + "px"
+			       });
+	    }
+
+	    function initPopupOnBlur() {
+		popupOnBlurInitialized = true;
+
+		$("body").on("click", function (e) {
+		    var $target = $(e.currentTarget);
+		    if ($target.attr("id") != $menuPopup.attr("id") && canPopupBlur) {
+			closePopup();
+		    }
+		});
+	    }
+	});
+    }
+
+})(jQuery);

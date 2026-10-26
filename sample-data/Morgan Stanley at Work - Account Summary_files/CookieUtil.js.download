@@ -1,0 +1,168 @@
+(function (window, document) {
+    var FUNCTIONAL_CATEGORY = "functional";
+    var FUNCTIONAL_ONETRUST_GROUP_ID = "C0003";
+    var registry = {};
+
+    window.SW = window.SW || {};
+
+    function removeCookie(cookieName, path, domain) {
+        document.cookie = toCookieString(cookieName, "", {path: path, domain: domain, expires: -1});
+    }
+
+    function removeCookieForKnownScopes(cookieDefinition) {
+        var domains = getKnownCookieDomains();
+
+        for (var domainIndex = 0; domainIndex < domains.length; domainIndex++) {
+            removeCookie(cookieDefinition.name, null, domains[domainIndex]);
+        }
+    }
+
+    function getKnownCookieDomains() {
+        var domainParts = window.location.hostname.split(".");
+        var domains = [null];
+
+        for (var i = 0; i < domainParts.length; i++) {
+            domains.push("." + domainParts.slice(i).join("."));
+        }
+
+        return domains;
+    }
+
+    function getCookieDefinition(category, cookieKey) {
+        var categoryRegistry = registry[category] || {};
+        var cookieDefinition = categoryRegistry[cookieKey];
+
+        if (!cookieDefinition) {
+            throw new Error("Cookie is not registered: " + cookieKey);
+        }
+
+        return cookieDefinition;
+    }
+
+    function toCookieOptions(cookieDefinition, options) {
+        var cookieOptions = copyOptions(options);
+        cookieOptions.path = cookieDefinition.path;
+        if (cookieDefinition.domain) {
+            cookieOptions.domain = cookieDefinition.domain;
+        }
+        return cookieOptions;
+    }
+
+    function copyOptions(options) {
+        var cookieOptions = {};
+        options = options || {};
+
+        for (var optionKey in options) {
+            if (Object.prototype.hasOwnProperty.call(options, optionKey)) {
+                cookieOptions[optionKey] = options[optionKey];
+            }
+        }
+
+        return cookieOptions;
+    }
+
+    function toCookieString(cookieName, value, options) {
+        var cookieParts = [encodeURIComponent(cookieName) + "=" + encodeURIComponent(String(value))];
+        var expiryDate = toExpiryDate(options.expires);
+
+        if (expiryDate) {
+            cookieParts.push("expires=" + expiryDate.toUTCString());
+        }
+        if (options.path) {
+            cookieParts.push("path=" + options.path);
+        }
+        if (options.domain) {
+            cookieParts.push("domain=" + options.domain);
+        }
+        if (options.secure) {
+            cookieParts.push("secure");
+        }
+
+        return cookieParts.join("; ");
+    }
+
+    function toExpiryDate(expires) {
+        var expiryDate;
+
+        if (typeof expires === "number") {
+            expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + expires);
+            return expiryDate;
+        }
+
+        return expires;
+    }
+
+    function setCookie(category, cookieKey, value, options) {
+        var cookieDefinition = getCookieDefinition(category, cookieKey);
+        document.cookie = toCookieString(cookieDefinition.name, value, toCookieOptions(cookieDefinition, options));
+    }
+
+    function getCookie(category, cookieKey) {
+        var cookieDefinition = getCookieDefinition(category, cookieKey);
+        return getCookieValue(cookieDefinition.name);
+    }
+
+    function getCookieValue(cookieName) {
+        var cookies = document.cookie ? document.cookie.split(";") : [];
+
+        for (var i = 0; i < cookies.length; i++) {
+            var cookieParts = cookies[i].split("=");
+            var name = decodeCookiePart(cookieParts.shift());
+
+            if (cookieName === name) {
+                return decodeCookiePart(cookieParts.join("="));
+            }
+        }
+
+        return undefined;
+    }
+
+    function decodeCookiePart(cookiePart) {
+        return decodeURIComponent(String.prototype.trim.call(cookiePart).replace(/\+/g, " "));
+    }
+
+    function removeRegisteredCookies(category) {
+        var cookies = registry[category] || {};
+
+        for (var cookieKey in cookies) {
+            if (Object.prototype.hasOwnProperty.call(cookies, cookieKey)) {
+                removeCookieForKnownScopes(cookies[cookieKey]);
+            }
+        }
+    }
+
+    function isOneTrustGroupActive(groupId) {
+        var activeGroups = window.OptanonActiveGroups;
+        if (typeof activeGroups !== "string" || activeGroups.length === 0) {
+            return false;
+        }
+        return activeGroups.indexOf(groupId) !== -1;
+    }
+
+    window.SW.CookieUtil = {
+        configure: function (configuredRegistry) {
+            registry = configuredRegistry || {};
+        },
+
+        isFunctionalCookiesActive: function () {
+            return isOneTrustGroupActive(FUNCTIONAL_ONETRUST_GROUP_ID);
+        },
+
+        isFunctionalCookiesAllowed: function (isOneTrustEnabled) {
+            return !isOneTrustEnabled || this.isFunctionalCookiesActive();
+        },
+
+        setFunctionalCookie: function (cookieKey, value, options) {
+            setCookie(FUNCTIONAL_CATEGORY, cookieKey, value, options);
+        },
+
+        getFunctionalCookie: function (cookieKey) {
+            return getCookie(FUNCTIONAL_CATEGORY, cookieKey);
+        },
+
+        removeRegisteredFunctionalCookies: function () {
+            removeRegisteredCookies(FUNCTIONAL_CATEGORY);
+        }
+    };
+})(window, document);

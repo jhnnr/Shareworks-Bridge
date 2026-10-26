@@ -1,0 +1,58 @@
+function disableForm(theform, buttonText) {
+    //disable all buttons
+    var resetOrSubmitButton = jQuery("input[type=submit], input[type=button], input[type=reset]");
+    resetOrSubmitButton.prop('disabled', true);
+    if ((typeof buttonText !== "undefined")) {
+	resetOrSubmitButton.prop('value', buttonText);
+    }
+}
+
+function showWaitingCursor() {
+    jQuery("body").css("cursor", "wait");
+}
+
+function disableFormById(theform, id) {
+    var $form = jQuery(theform);
+    $form.find("#" + id).prop('disabled', true);
+}
+
+function enableFormOnWindowOpener() {
+    if (window.opener === null || (window.opener && typeof(window.opener.document) != 'object')) {
+	// no opener to modify.
+	return;
+    }
+    //enable all forms in the opener
+    jQuery(window.opener.document)
+	    .find("input[type=submit], input[type=button], input[type=reset]")
+	    .prop('disabled', false);
+}
+
+function enableForm(theform) {
+    jQuery("input[type=submit], input[type=button], input[type=reset]").prop('disabled', false);
+    jQuery("body").css("cursor", "auto");
+}
+
+function disableSubmitByEnterKey(e) {
+    var enterKey = 13;
+    var key;
+    if (window.event) {
+	e = window.event;
+	key = e.keyCode;   //IE
+    } else {
+	key = e.which;
+    }
+    if (key == enterKey) {
+	if (e.preventDefault) {
+	    e.preventDefault();
+	} else {
+	    e.returnValue = false;
+	}
+    }
+}
+
+function disableLink(ctrl) {
+    ctrl = $(ctrl);
+    ctrl.removeAttr("href");
+    ctrl.removeAttr("onclick");
+    ctrl.css("color", "Gray");
+}

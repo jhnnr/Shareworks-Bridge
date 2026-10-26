@@ -1,0 +1,149 @@
+body {
+  background: #ffffff;
+  color: #4D4F53;
+  font-family: Arial;
+  font-size: 11pt;
+  line-height: 1.4;
+}
+
+#sw-nav-masthead {
+  height: 38px;
+}
+
+.sw-do-not-persist-block {
+  display: none;
+}
+
+#sw-nav-masthead .masthead-top-nav,
+#sw-nav-masthead .masthead-bottom {
+  display: none;
+}
+
+#sw-pagetitle-wrapper .button-bar,
+.sw-subtitle-wrapper .button-bar {
+  display: none;
+}
+
+#sw-sidemenu,
+#footer-wrapper {
+  display: none;
+}
+
+#main-wrapper {
+  height: auto;
+  overflow: visible;
+}
+
+#main-wrapper #content-wrapper {
+  float: none;
+  width: auto;
+}
+
+#sw-contentMain {
+  padding: 0;
+  margin: 0;
+}
+
+body.full-width .fixed-width-content-container {
+  width: auto;
+}
+
+.form-button-bar {
+  display: none;
+}
+
+/* ====================================
+	FORMATTING
+====================================*/
+a,
+.ui-widget .ui-widget-content a {
+  color: #006890;
+}
+
+h1 {
+  font-size: 15pt;
+}
+
+h2 {
+  font-size: 13pt;
+}
+
+h3 {
+  font-size: 12pt;
+}
+
+/* ====================================
+	TABLE
+====================================*/
+table {
+  border: none;
+  font-size: 100%;
+  border-spacing: 0;
+}
+
+.sw-tableholder,
+.sw-datatable,
+.sw-formtable {
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.sw-tableholder {
+  border: none;
+}
+
+.sw-tableholder .sw-datatable,
+.sw-tableholder .sw-formtable {
+  border-top: none;
+  margin-bottom: 0;
+}
+
+.tableModelColumn,
+.newReportTitleStyle,
+.newReportHeadingStyle,
+.newReportSortHeadingStyle,
+.tableModelTitle,
+.tableModelSubTitle {
+  background-color: #F3F3F3;
+  border: 1px solid #C9CAC8;
+  color: #4D4F53;
+  font-weight: bold;
+  padding: 7px;
+}
+
+.newReportTitleStyle,
+.newReportTitleStyle,
+.tableModelTitle {
+  background-color: #e6e6e6;
+  border-bottom: 1px solid #C9CAC8;
+  color: #4D4F53;
+}
+
+.tableModelRow,
+.staticViewTableLeftCell,
+.staticViewTableRightCell,
+.staticAddEditTableLeftCell,
+.staticAddEditTableRightCell {
+  border: none;
+  border-bottom: 1px solid #f3f3f3;
+  padding: 5px 7px;
+  text-align: left;
+}
+
+.newReportCellStyle,
+.defaultTableModelTextBold,
+.defaultTableModelTextBoldNoBorder {
+  border: 1px solid #e6e6e6;
+  padding: 5px 7px;
+}
+
+/****************************************************/
+
+.sw_watermark {
+  position: absolute;
+  opacity: 0.2;
+  font-size: 4em;
+  width: 100%;
+  text-align: center;
+  z-index: 1000;
+}

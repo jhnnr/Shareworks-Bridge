@@ -1,0 +1,18 @@
+(function (SW, $) {
+
+    SW.TabsHelper = {
+	displayTab: function (tabId) {
+	    var contentId = tabId.replace("tab_", "div_");
+	    var $tabsContentContainer = $("#" + tabId).parents(".tabs-content-container");
+	    //hide current tab button and content
+	    $tabsContentContainer.find(".tab-buttons").find(".tabOn").removeClass("tabOn");
+	    $tabsContentContainer.find(".tab-contents").find(".tabOn").removeClass("tabOn");
+	    //show new tab button and content
+	    $tabsContentContainer.find("#" + tabId).addClass("tabOn");
+		$tabsContentContainer.find("#" + contentId)
+				.addClass("tabOn")
+				.trigger("tabOn"); //notify tab #contentId
+	}
+    }
+
+})(SW, jQuery);

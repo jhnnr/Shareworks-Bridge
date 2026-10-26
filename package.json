@@ -1,0 +1,23 @@
+{
+  "name": "shareworks-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Secure dual-component bridge and dashboard for Morgan Stanley Shareworks equity data",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=web",
+    "build:web": "npm run build --workspace=web",
+    "build:ext": "npm run build --workspace=extension",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "jsdom": "^30.1.3",
+    "typescript": "^5.7.3"
+  }
+}

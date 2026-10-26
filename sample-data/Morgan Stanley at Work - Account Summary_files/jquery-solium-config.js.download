@@ -1,0 +1,2 @@
+// Configure jquery
+$.ajaxSetup({cache:true});

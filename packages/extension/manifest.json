@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Shareworks Bridge",
+  "version": "1.0.0",
+  "description": "Secure companion bridge for exporting and synchronizing Shareworks equity holdings.",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.solium.com/*",
+    "https://*.shareworks.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Shareworks Bridge"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://localhost/*",
+        "https://127.0.0.1/*",
+        "https://*.github.io/*"
+      ],
+      "js": ["webapp-bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://*.solium.com/*",
+        "https://*.shareworks.com/*"
+      ],
+      "js": ["shareworks-interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.solium.com/*",
+        "https://*.shareworks.com/*"
+      ],
+      "js": ["shareworks-bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

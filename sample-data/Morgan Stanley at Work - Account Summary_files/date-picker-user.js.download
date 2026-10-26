@@ -1,0 +1,473 @@
+const LOCAL_DATE_FORMAT = 'YYYY-MM-DD';
+const DATEPICKER_FORMAT = 'DD-MMM-YYYY';
+
+function swDateControl_parseDate(id) {
+    var datePicker = $("[id='" + id + "']");
+    var language = datePicker.data("language");
+    var momentFormat = datePicker.data("dateFormat");
+    var dateQuickSelectID = datePicker.data("dateQuickSelectID");
+    var prefersMiddleEndianDateInput = datePicker.data("prefersMiddleEndianDateInput");
+    var formattedDate = datePicker.val();
+
+    //Unselect quickSelect
+    if (dateQuickSelectID !== null) {
+        $("[id =" + dateQuickSelectID + "]").val("")
+    }
+    //Date has been cleared
+    if (formattedDate === null || formattedDate === '') {
+        swDateControl_setDate(id, "");
+    }
+
+    formattedDate = replaceAll(",", " ", formattedDate);
+    formattedDate = regExpTrim(formattedDate);
+
+    var date;
+    var acceptedParseMomentFormats;
+    var formatsToCheckLastly = ['YYYY MMM DD', 'YYYY MM DD', 'YYYY DD MMM', 'YYYY DD MM', 'MMM DD', 'DD MMM', 'MMMM DD YYYY'];
+    //Do an ordered check of accepted date formats that the user may have entered. For US residents try MDY first
+    if (prefersMiddleEndianDateInput) {
+        acceptedParseMomentFormats = ['MMM DD YYYY'].concat([momentFormat]).concat(['DD MMM YYYY', 'MM DD YYYY', 'DD MM YYYY']).concat(formatsToCheckLastly);
+    } else {
+        acceptedParseMomentFormats = [momentFormat].concat(['DD MMM YYYY', 'DD MM YYYY', 'MM DD YYYY', 'MMM DD YYYY']).concat(formatsToCheckLastly);
+    }
+    moment.lang(language);
+    for (var i = 0; i < acceptedParseMomentFormats.length; i++) {
+        var currParseMomentFormat = acceptedParseMomentFormats[i];
+        var dateRegexp = getDateFormatCheckRegex(currParseMomentFormat);
+        var match = formattedDate.match(dateRegexp);
+        if (match !== null) {
+            if (currParseMomentFormat.indexOf('Y') == -1) {
+                var year = new Date().getFullYear();
+                currParseMomentFormat += " YYYY";
+                formattedDate += " " + year;
+            }
+            date = moment(formattedDate, getOrderedDateFormatPermutations(currParseMomentFormat));
+            if (date.isValid()) {
+                swDateControl_setDate(id, date, formattedDate);
+                return;
+            }
+        }
+    }
+    //Current behavior is to reject and show the watermark if unparseable.
+    //Ideal enhancement IMO would be a absolute positioned error box
+    swDateControl_setDate(id, "");
+}
+
+function replaceAll(find, replace, str) {
+    return str.replace(new RegExp(find, 'g'), replace);
+}
+
+function regExpTrim(str) {
+    return str.replace(/^\s+|\s+$/gm, '');
+}
+
+function getDateFormatCheckRegex(momentFormat) {
+    return new RegExp("^" + momentFormat.replace(/[ \-/]+/g, "[ \\-/]+")// be flexible with the seperators(space,dash,slash)
+                              .replace(/D+/, "(\\d{1,2})")// 1 to 2 date digits
+                              .replace(/Y+/, "(\\d{2,4})")// 2 to 4 year digits
+                              .replace(/MMM/, "(\\D{1,11})") // 1 to 11 month non-digit characters
+                              .replace(/M{1,2}/, "(\\d{1,2}|\\d{1,2}\\D)") // 1 to 2 month digits, or 1 to 2 month digit with 1 non-digit
+                      + "$");
+}
+
+// To make this flexible we need to include ordered permutations of the dateformat to check. Shortest Patterns First
+function getOrderedDateFormatPermutations(momentDateFormat) {
+    if (momentDateFormat.indexOf('MMM') == -1) {
+        var monthSub = substitute(momentDateFormat, "M", "MM");
+    } else {
+        var monthSub = substitute(momentDateFormat, "MMM", "MMMM");
+    }
+
+    if (momentDateFormat.indexOf('YYYY') == 0) {
+        return [momentDateFormat,
+                monthSub
+        ];
+    }
+    // only sub the year if it isn't first
+    var bothSub = substitute(monthSub, "YY", "YYYY");
+    var yearSub = substitute(momentDateFormat, "YY", "YYYY");
+    return [bothSub,
+            yearSub,
+            monthSub,
+            momentDateFormat
+    ];
+}
+
+function substitute(s, short, long) {
+    if (s.indexOf(long) == -1) {
+        return s.replace(short, long);
+    } else {
+        return s.replace(long, short);
+    }
+}
+
+function swDateControl_setDate(datePickerId, newDate, formattedDate) {
+    var datePicker = $("[id='" + datePickerId + "']");
+    var isBlank = (newDate === null || newDate === '');
+    var isWithinDropDownRange = !isBlank && (newDate.year() >= 1900 && newDate.year() <= 2050);
+
+    //Hide/show the date button if the date is Inside/Outside the Range
+    if (isBlank || isWithinDropDownRange) {
+        if ("button" !== datePicker.datepicker("option", "showOn")) {
+            datePicker.datepicker("option", "showOn", "button");
+        }
+    } else {
+        if (null !== datePicker.datepicker("option", "showOn")) {
+            datePicker.datepicker("option", "showOn", null);
+        }
+    }
+
+    //Ensure that the buttons have the correct cursor style
+    if (datePicker.datepicker('isDisabled')) {
+        $('#' + datePickerId + '+.ui-datepicker-trigger').css('cursor', 'default');
+    } else {
+        $('#' + datePickerId + '+.ui-datepicker-trigger').css('cursor', 'pointer');
+    }
+
+    // Set the value of the field
+    if (isBlank) {
+        datePicker.val("");
+        swDateControl_watermark(datePickerId);
+    } else {
+        if (datePicker.data("language") !== null && datePicker.data("language") === 'cs') {
+            //2.1.0 version moment(newDate).format doesn't work for Czech
+            //moment with locale 2.19.1 version uses CLDR naming convention, Java7 doesn't for some languages.
+            //Hopefully after shareworks is updated to java 8, we can nuke GwtCldrDateMapping and upgrade moment to latest with locale version
+            datePicker.val(formattedDate);
+        } else {
+            moment.lang(datePicker.data("language"));
+            datePicker.val(moment(newDate).format(datePicker.data("dateFormat")));
+        }
+    }
+}
+
+
+function swDateControl_getDate(datePickerId) {
+    var datePicker = $("[id='" + datePickerId + "']");
+    var momentFormat = datePicker.data("dateFormat");
+    moment.lang(datePicker.data("language"));
+    return moment(datePicker.val(), momentFormat);
+}
+
+function swDateControl_isBlank(datePickerId) {
+    var datePicker = $("[id='" + datePickerId + "']");
+    var momentFormat = datePicker.data("dateFormat");
+    return datePicker.val() === momentFormat || datePicker.val() === "";
+}
+
+// This function initalizes all date picker behavior. This should be called in the ready function
+function swDateControl_initDatePicker(id, dateQuickSelectID, subsection, javaDateFormat, maxDateOffset, minDateOffset, defaultDate, allowHoliday, holidayJSON, onchange, prefersMiddleEndianDateInput, isEnabled) {
+    swDateControl_initDatePickerWithLanguage(id, dateQuickSelectID, subsection, javaDateFormat, maxDateOffset, minDateOffset, defaultDate, allowHoliday, holidayJSON, onchange, prefersMiddleEndianDateInput, isEnabled, null, 'en')
+}
+
+function swDateControl_initDatePickerWithExchangeDate(id, dateQuickSelectID, subsection, javaDateFormat, maxDateOffset, minDateOffset, defaultDate, allowHoliday, holidayJSON, onchange, prefersMiddleEndianDateInput, isEnabled, exchangeDate) {
+    swDateControl_initDatePickerWithLanguage(id, dateQuickSelectID, subsection, javaDateFormat, maxDateOffset, minDateOffset, defaultDate, allowHoliday, holidayJSON, onchange, prefersMiddleEndianDateInput, isEnabled, exchangeDate, 'en')
+}
+
+function swDateControl_initDatePickerWithLanguage(id, dateQuickSelectID, subsection, javaDateFormat, maxDateOffset, minDateOffset, defaultDate, allowHoliday, holidayJSON, onchange, prefersMiddleEndianDateInput, isEnabled, exchangeDate, language) {
+    var datePickerTextBox = $("[id='" + id + "']");
+
+    //Work around for GWT add blackout page which creates a datepicker that it does not render on screen.
+    if (datePickerTextBox.length === 0) {
+        return;
+    }
+
+    moment.lang('en', {
+months : ['January','February','March','April','May','June','July','August','September','October','November','December',''],
+monthsShort :  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',''],
+weekdays : ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+weekdaysShort : ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+weekdaysMin : ['Su','Mo','Tu','We','Th','Fr','Sa']
+});
+
+jQuery(function($){
+	$.datepicker.regional['en'] = {
+		closeText: 'Done',		prevText: 'Prev',		nextText: 'Next',
+		currentText: 'Today',
+		monthNames: ['January','February','March','April','May','June','July','August','September','October','November','December',''],
+		monthNamesShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',''],
+		dayNames: ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+		dayNamesShort: ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+		dayNamesMin: ['Su','Mo','Tu','We','Th','Fr','Sa'],
+		weekHeader: 'Wk',
+		firstDay: 1,
+		isRTL: false,
+		showMonthAfterYear: false,
+		yearSuffix: ''};
+});
+moment.lang('en', {
+months : ['January','February','March','April','May','June','July','August','September','October','November','December',''],
+monthsShort :  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',''],
+weekdays : ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+weekdaysShort : ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+weekdaysMin : ['Su','Mo','Tu','We','Th','Fr','Sa']
+});
+
+jQuery(function($){
+	$.datepicker.regional['en'] = {
+		closeText: 'Done',		prevText: 'Prev',		nextText: 'Next',
+		currentText: 'Today',
+		monthNames: ['January','February','March','April','May','June','July','August','September','October','November','December',''],
+		monthNamesShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec',''],
+		dayNames: ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+		dayNamesShort: ['','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+		dayNamesMin: ['Su','Mo','Tu','We','Th','Fr','Sa'],
+		weekHeader: 'Wk',
+		firstDay: 1,
+		isRTL: false,
+		showMonthAfterYear: false,
+		yearSuffix: ''};
+});
+
+    jQuery(function ($) {
+        $.datepicker.setDefaults($.datepicker.regional[language]);
+    });
+
+    var negatedMinDateOffset = null;
+    if (minDateOffset !== null) {
+        negatedMinDateOffset = -minDateOffset;
+    }
+
+    // Set up Jquery Calendar
+    datePickerTextBox.datepicker(
+        {
+            showOn: "button",
+            buttonImage: "/solium/images/" + subsection + "/show-calendar2.gif",
+            buttonText: "",
+            buttonImageOnly: true,
+            dateFormat: convertJavaDateFormatToJqueryDatePickerFormat(javaDateFormat),
+            changeMonth: true,
+            changeYear: true,
+            maxDate: maxDateOffset,
+            minDate: negatedMinDateOffset,
+            yearRange: "1900:2050",
+            showAnim: "",
+            firstDay: "0",
+            defaultDate: defaultDate === null ? undefined : defaultDate,
+            beforeShowDay: allowHoliday ? undefined : function (date) {
+                return swDateControl_isDateHoliday(date, holidayJSON);
+            }
+        }
+    );
+    var momentFormat = convertJavaDateFormatToMomentDateFormat(javaDateFormat);
+
+    //Store all settings with the datepicke
+    datePickerTextBox.data("dateFormat", momentFormat);
+    datePickerTextBox.data("language", language);
+    datePickerTextBox.data("prefersMiddleEndianDateInput", prefersMiddleEndianDateInput);
+    datePickerTextBox.data("dateQuickSelectID", dateQuickSelectID);
+
+    // Set up watermarking and input parsing events
+    datePickerTextBox.blur(
+        function () {
+            swDateControl_watermark(id);
+        }).focus(
+        function () {
+            $(this).removeClass('watermark');
+            if ($(this).val() == momentFormat) {
+                $(this).val('');
+            }
+        }).change(
+        function () {
+            swDateControl_parseDate(id);
+            swDateControl_watermark(id);
+            validateDateVal(id, holidayJSON, minDateOffset, maxDateOffset, allowHoliday, exchangeDate);
+            if (onchange !== null) {
+                onchange.apply(undefined);
+            }
+        });
+
+    // Style the icon so that a pointer appears overtop
+    $('#' + id + '+.ui-datepicker-trigger').css('cursor', 'pointer');
+
+    //Trigger the blur event to set up watermark if default value is null
+    datePickerTextBox.blur();
+    swDateControl_setEnabled(isEnabled, id);
+}
+
+function validateDateVal(id, holidayJSON, minDateOffset, maxDateOffset, allowHoliday, exchangeDate) {
+
+    var datePicker = $("[id='" + id + "']");
+    var formattedDate = datePicker.val();
+
+    let errorTag = document.getElementById("errortag_till_date_widget");
+    if (errorTag) {
+        let minDate = moment(exchangeDate, LOCAL_DATE_FORMAT).add(minDateOffset, 'days');
+        let maxDate = moment(exchangeDate, LOCAL_DATE_FORMAT).add(maxDateOffset, 'days');
+        document.getElementById(id).setAttribute("aria-invalid", "true");
+        errorTag.setAttribute("style", "display: none;");
+        let datePickerInputBox = document.getElementById(id);
+        datePickerInputBox.validationFailStatus = false;
+
+        if (formattedDate && formattedDate != DATEPICKER_FORMAT) {
+            let selectedDate = moment(formattedDate, DATEPICKER_FORMAT);
+            if (!allowHoliday) {
+                if (isWeekend(selectedDate)) {
+                    const errorMsg = "The good till date cannot be on a weekend";
+                    showDateFieldValidationErrorMsg(id, errorMsg);
+                    datePickerInputBox.validationFailStatus = true;
+                    return;
+                }
+                if (isHoliday(selectedDate, holidayJSON)) {
+                    const errorMsg = "The good till date cannot be on a holiday";
+                    showDateFieldValidationErrorMsg(id, errorMsg);
+                    datePickerInputBox.validationFailStatus = true;
+                    return;
+                }
+            }
+            if (minDateOffset !== null && minDateOffset != "null" && maxDateOffset !== null && maxDateOffset != "null" && exchangeDate !== null) {
+                if (!isDateBetweenAllowedRangeOffset(selectedDate, minDate, maxDate)) {
+                    const errorMsg = "The good till date cannot be out of date range";
+                    showDateFieldValidationErrorMsg(id, errorMsg);
+                    datePickerInputBox.validationFailStatus = true;
+                }
+            }
+        } else {
+            const errorMsg = "Date cannot be empty";
+            showDateFieldValidationErrorMsg(id, errorMsg);
+            datePickerInputBox.validationFailStatus = true;
+            return;
+        }
+    }
+}
+
+function isWeekend(date) {
+    return (date.day() === 0 || date.day() === 6);
+}
+
+function isHoliday(date, holidayDates) {
+    if (date instanceof moment && !isNaN(date)) {
+        if (holidayDates === null) {
+            return false;
+        }
+        for (let i = 0; i < holidayDates.length; i++) {
+            if (date.year() == holidayDates[i][0] && date.month() == holidayDates[i][1] && date.date() == holidayDates[i][2]) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function isDateBetweenAllowedRangeOffset(selectedDate, minDateOffset, maxDateOffset) {
+
+    if (selectedDate.isSameOrAfter(minDateOffset) && selectedDate.isSameOrBefore(maxDateOffset)) {
+        return true;
+    }
+    return false;
+}
+
+function showDateFieldValidationErrorMsg(id, errorMsg) {
+    const dateErrorMessage = document.getElementById('limit_order_error_tag_till_date_widget');
+    dateErrorMessage.innerHTML = errorMsg;
+    document.getElementById("errortag_till_date_widget").setAttribute("style", "display: inline; position: absolute; margin-top: 1px;");
+    document.getElementById(id).setAttribute("aria-invalid", "true");
+}
+
+function swDateControl_watermark(id) {
+    var datePicker = $("[id='" + id + "']");
+    //Work around for GWT add blackout page which creates a datepicker that it does not render on screen.
+    if (datePicker.length === 0) {
+        return;
+    }
+    var momentFormat = datePicker.data("dateFormat");
+    if ((datePicker.val().length === 0 && !hasFocus(datePicker)) || datePicker.val() === momentFormat) {
+        datePicker.val(momentFormat).addClass('watermark');
+    } else {
+        datePicker.removeClass('watermark');
+    }
+}
+
+/**
+ * When no element has focus on a page (i.e. focus is on its way from one element to another), Edge will throw an "Unspecified Error" on the jquery .is(':focus').
+ * This is here to catch that and just return false."
+ */
+function hasFocus(element) {
+    try {
+        return element.is(':focus');
+    } catch (error) {
+        return false;
+    }
+}
+
+
+function swDateControl_setEnabled(isEnabled, id) {
+    var datePicker = $("[id='" + id + "']");
+    //Work around for GWT add blackout page which creates a datepicker that it does not render on screen.
+    if (datePicker.length === 0) {
+        return;
+    }
+    if (isEnabled) {
+        datePicker.datepicker('enable');
+        $('#' + id + '+.ui-datepicker-trigger').css('cursor', 'pointer');
+    } else {
+        datePicker.datepicker('disable');
+        $('#' + id + '+.ui-datepicker-trigger').css('cursor', 'default');
+    }
+}
+
+
+function swDateControl_setEnabled_global(isEnabled) {
+    var hasDatepicker = $(".hasDatepicker");
+    if (hasDatepicker.length !== 0) {
+        if (isEnabled) {
+            hasDatepicker.datepicker('enable');
+            $(".ui-datepicker-trigger").css('cursor', 'pointer');
+        } else {
+            hasDatepicker.datepicker('disable');
+            $(".ui-datepicker-trigger").css('cursor', 'default');
+        }
+    }
+}
+
+
+function swDateControl_isDateHoliday(date, holidayDates) {
+    //Weekends
+    if ((date.getDay() == 0) || (date.getDay() == 6)) {
+        return [false, ''];
+    }
+    if (holidayDates === null) {
+        return [true, ''];
+    }
+    for (var i = 0; i < holidayDates.length; i++) {
+        if (date.getFullYear() == holidayDates[i][0] && date.getMonth() == holidayDates[i][1] && date.getDate() == holidayDates[i][2]) {
+            return [false, ''];
+        }
+    }
+    return [true, ''];
+}
+
+function swDateControl_isDateEndOfMonth(date) {
+    var endOfMonth = new Date(new Date(date.getFullYear(), date.getMonth() + 1, 1) - 1);
+    return [date.getDate() == endOfMonth.getDate(), ''];
+}
+
+//Libraries do not use the same date formatting string. We are only considering Day of Month, Month and Year with these conversion functions
+//  http://momentjs.com/docs/#/displaying/format/
+//  http://docs.oracle.com/javase/1.4.2/docs/api/java/text/SimpleDateFormat.html
+function convertJavaDateFormatToMomentDateFormat(javaDateFormat) {
+    return javaDateFormat.toUpperCase();
+}
+
+//  http://docs.jquery.com/UI/Datepicker/formatDate
+//  http://docs.oracle.com/javase/1.4.2/docs/api/java/text/SimpleDateFormat.html
+function convertJavaDateFormatToJqueryDatePickerFormat(javaDateFormat) {
+    var jQueryDateFormat = javaDateFormat;
+    //yyyy->yy, yy->y
+    if (javaDateFormat.indexOf("yyyy") != -1) {
+        jQueryDateFormat = jQueryDateFormat.replace("yyyy", "yy");
+    } else if (javaDateFormat.indexOf("yy") != -1) {
+        jQueryDateFormat = jQueryDateFormat.replace("yy", "y");
+    }
+    //MMMM -> MM, MMM -> M, MM->mm, M->m
+    if (javaDateFormat.indexOf("MMMM") != -1) {
+        jQueryDateFormat = jQueryDateFormat.replace("MMMM", "MM");
+    } else if (javaDateFormat.indexOf("MMM") != -1) {
+        jQueryDateFormat = jQueryDateFormat.replace("MMM", "M");
+    } else if (javaDateFormat.indexOf("MM") != -1) {
+        jQueryDateFormat = jQueryDateFormat.replace("MM", "mm");
+    } else if (javaDateFormat.indexOf("M") != -1) {
+        jQueryDateFormat = jQueryDateFormat.replace("M", "m");
+    }
+    return jQueryDateFormat;
+}

@@ -1,0 +1,97 @@
+/**
+ * Clones the form action buttons from the bottom of the page and puts them in the title bar
+ * so it's easier to access.
+ * Add class "ignore-bar" to a "form-button-bar" if you don't want the buttons to be cloned to the title bar.
+ * Won't work in GWT pages because GWT doesn't have any Form elements.
+ */
+(function ($) {
+    $(function () {
+
+        var $form = $("form:first:not(.search-form)");
+        var $formButtonBar = $form.find(".form-button-bar:not(.ignore-bar)");
+        var $addFormButtonBar = $form.find(".add-form-button-bar");
+
+        function init() {
+            if ($formButtonBar.length == 0 || $formButtonBar.children().length == 0 || SW.isReportPage || ($("body").hasClass("popup") && !$("body").hasClass("show-duplicate-buttons"))
+                || (SW.isUserSide && $addFormButtonBar.length == 0)) {
+                return;
+            }
+
+            var $pageTitleButtonBar = getPageTitleButtonBar();
+            var $submitClones = $formButtonBar.find("input[type='submit']").clone(); //sometimes cancel is also a submit
+            var $buttonClones = $formButtonBar.find("input[type='button']").clone();
+
+            //put clones in the title bar
+            $pageTitleButtonBar.append($submitClones, $buttonClones);
+
+            //update each submit input
+            $submitClones.each(function () {
+                var $submitButton = $(this);
+                //set up form submit click if it doesn't have an onclick action already
+                if ($submitButton.attr("onclick") == undefined || $submitButton.attr("onclick") == "") {
+                    $submitButton.on("click", function (e) {
+                        e.preventDefault();
+
+                        /* some forms need a property "action" with a value of the state ie. "Verify" or "Cancel".
+                         these are normally passed from the submit buttons within the form element.
+                         since these submit buttons are outside the form element, we need to add hidden inputs with those attributes */
+                        if ($submitButton.attr("name") != undefined && $submitButton.attr("value") != undefined) {
+                            createHiddenInput($submitButton.attr("name"), $submitButton.attr("value"));
+                        }
+
+                        $form.submit();
+                    });
+                } else {
+                    //make sure onclick won't fail
+                    $submitButton.attr("onclick", getOnclickVal($submitButton));
+                }
+            });
+
+            //update each button input
+            $buttonClones.each(function () {
+                var $button = $(this);
+                if ($button.attr("onclick") != undefined && $button.attr("onclick") != "") {
+                    //make sure onclick won't fail
+                    $button.attr("onclick", getOnclickVal($button));
+                }
+            });
+
+            //update the view
+            $(window).trigger("resize");
+        }
+
+        init();
+
+        function getPageTitleButtonBar() {
+            var $pageTitle = $("#sw-pagetitle-wrapper");
+            if ($pageTitle.find(".button-bar").length > 0) {
+                return $pageTitle.find(".button-bar");
+            } else {
+                return $("<div class='button-bar'></div>").appendTo($pageTitle);
+            }
+        }
+
+        function createHiddenInput(name, value) {
+            var inputHtml = "<input type='hidden' name='" + name + "'  value='" + value + "' />";
+            $(inputHtml).appendTo($form);
+        }
+
+        function getOnclickVal($target) {
+            var onclickVal = $target.attr("onclick");
+            //make sure the form is targeted correctly
+            onclickVal = onclickVal.replace(/this.form/g, "document.forms[0]");
+
+            //some manually change the url instead of submitting the form
+            if (onclickVal.indexOf("window.location") != -1 || onclickVal.indexOf("window.history") != -1 || onclickVal.indexOf("cancel()") != -1) {
+                return onclickVal;
+            }
+
+            //make sure it has a submit action
+            if (onclickVal.indexOf("submit()") < 0 && !$target.hasClass("doNotSubmit")) {
+                onclickVal += "document.forms[0].submit(); return false;";
+            }
+            return onclickVal;
+        }
+
+    });
+})(jQuery);

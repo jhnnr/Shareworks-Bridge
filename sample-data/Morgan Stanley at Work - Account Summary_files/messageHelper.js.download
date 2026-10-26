@@ -1,0 +1,109 @@
+/*
+
+    The messageHelper allows:
+
+    1. Participant Webclient to postMessage to SW to tell the page it is in embedded mode
+    2. Which in turn allows SW webclient to do perform some tasks such modify links
+
+    The modified links account for the use case where the user opens the active
+    links in a new tab, preserving the the participant interface for js-intercepted
+    links.
+ */
+
+
+var SW = SW || {};
+
+SW.webclientRootUri = "";
+
+/**
+ * @param {Object} event - The postMessage event object.
+ * @param {Object} event.data - The data attribute of the event
+ * @param {string} event.data.type - The event type
+ * @param {Object} event.data.values - The event values
+ * @param {string} event.data.values.href - originating url of event caller
+ *
+ */
+function handleMessage(event) {
+    if (event) {
+        var message = event.data;
+        var type = message && message.type ? message.type : message;
+
+        switch (type) {
+            case 'ready':
+            case 'webclient-process-links': {
+
+                if (!SW.webclientRootUri) {
+                    SW.webclientRootUri = message.values.href;
+                }
+
+                if (SW.webclientRootUri) {
+                    var $links = $(document).find('a');
+
+                    $links.each(function (i, link) {
+                        var $link = $(link);
+                        var href = $link.attr('href');
+
+                        // ignore links that:
+                        // - are explicitly marked as safe
+                        if (!$link.hasClass('webclient-iframe-safe') &&
+                            // - open in new tabs
+                            !$link.attr('target') &&
+                            // - are only fragment identifiers
+                            (!href || href.indexOf('#') !== 0) &&
+                            // - are mailto
+                            (!href || href.indexOf('mailto') !== 0) &&
+                            // - are sw buttons
+                            !$link.hasClass('sw-button') &&
+                            // - may have already been processed
+                            !$link.attr('data-url') &&
+                            // - are gwt anchors
+                            (!$link.hasClass('gwt-Anchor') ||
+                             $link.hasClass('fancy-document-view'))) {
+
+                            replaceUrlHref(link, SW.webclientRootUri);
+                        }
+                    });
+
+                    // disable link by making it just text
+                    var $linksToDisable = $('.sw-spf-frame').contents().find('a');
+
+                    $linksToDisable.each(function (i, link) {
+                        $(link).contents().unwrap();
+                    });
+                }
+            }
+
+            default:
+                break;
+
+        }
+    }
+}
+
+/**
+ * Replaces the href value of a link with provided href string,
+ * and puts the old href into a data-url attribute for documentation purposes
+ *
+ * @param linkObj {HTML Element} - The link element to process
+ * @param href {string} - The replacement href
+ *
+ * @returns undefined.
+ */
+function replaceUrlHref(linkObj, href) {
+    var currentHref = $(linkObj).attr('href');
+
+    if (currentHref) {
+        $(linkObj).attr('data-url', currentHref);
+    }
+
+    $(linkObj).attr('href', href);
+}
+
+window.addEventListener('message', this.handleMessage, false);
+
+$(document).ready(function () {
+    var message = {
+        type: 'webclient-iframe-ready'
+    };
+    window.parent.postMessage(message, '*');
+});

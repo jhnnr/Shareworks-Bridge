@@ -1,0 +1,65 @@
+{
+  "holdings": [
+    {
+      "symbol": "ACME",
+      "companyName": "Acme Technologies Inc.",
+      "totalShares": 14500,
+      "vestedShares": 8250,
+      "unvestedShares": 6250,
+      "currency": "USD",
+      "currentPrice": 48.50,
+      "totalValue": 703250
+    }
+  ],
+  "grants": [
+    {
+      "grantId": "RSU-2023-001",
+      "grantDate": "2023-03-15",
+      "grantType": "RSU",
+      "status": "ACTIVE",
+      "totalGrantedShares": 8000,
+      "vestedShares": 4000,
+      "unvestedShares": 4000,
+      "exercisePrice": null,
+      "marketValue": 388000,
+      "vestingSchedule": [
+        { "date": "2024-03-15", "shares": 2000, "status": "VESTED", "projectedValue": 97000 },
+        { "date": "2024-09-15", "shares": 2000, "status": "VESTED", "projectedValue": 97000 },
+        { "date": "2025-03-15", "shares": 2000, "status": "UNVESTED", "projectedValue": 97000 },
+        { "date": "2025-09-15", "shares": 2000, "status": "UNVESTED", "projectedValue": 97000 }
+      ]
+    },
+    {
+      "grantId": "ISO-2022-042",
+      "grantDate": "2022-06-01",
+      "grantType": "ISO",
+      "status": "ACTIVE",
+      "totalGrantedShares": 5000,
+      "vestedShares": 3750,
+      "unvestedShares": 1250,
+      "exercisePrice": 12.00,
+      "marketValue": 242500,
+      "vestingSchedule": [
+        { "date": "2023-06-01", "shares": 1250, "status": "VESTED", "projectedValue": 60625 },
+        { "date": "2024-06-01", "shares": 1250, "status": "VESTED", "projectedValue": 60625 },
+        { "date": "2024-12-01", "shares": 1250, "status": "VESTED", "projectedValue": 60625 },
+        { "date": "2025-06-01", "shares": 1250, "status": "UNVESTED", "projectedValue": 60625 }
+      ]
+    },
+    {
+      "grantId": "ESPP-2024-P1",
+      "grantDate": "2024-06-30",
+      "grantType": "ESPP",
+      "status": "FULLY_VESTED",
+      "totalGrantedShares": 1500,
+      "vestedShares": 1500,
+      "unvestedShares": 0,
+      "exercisePrice": 36.50,
+      "marketValue": 72750,
+      "vestingSchedule": [
+        { "date": "2024-06-30", "shares": 1500, "status": "VESTED", "projectedValue": 72750 }
+      ]
+    }
+  ],
+  "updatedAt": "2025-02-15T16:30:00.000Z"
+}

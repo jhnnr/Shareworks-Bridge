@@ -1,0 +1,43 @@
+(function ($) {
+
+    $(function () {
+        if ($("#help-menu-link").length > 0) {
+            $("#help-menu-link").menubutton();
+        }
+        if ($("#settings-menu-link").length > 0) {
+            $("#settings-menu-link").menubutton();
+        }
+        if ($(".sw-module-button.menu-button").length > 0) {
+            $(".sw-module-button.menu-button").menubutton();
+        }
+
+        //see SW-44878
+        //if sidemenu is smaller than the main wrapper make it go to the bottom
+        if (!SW.isUserSide) {
+            var $mainWrapper = $("#main-wrapper");
+            if (!$mainWrapper.hasClass("no-autosize")) {
+                $(window).on("autosizecomplete", function (e) {
+                    sidemenuMatchMainWrapperHeight($mainWrapper);
+                });
+            }
+            sidemenuMatchMainWrapperHeight($mainWrapper);
+        }
+    });
+
+    function sidemenuMatchMainWrapperHeight($mainWrapper) {
+        var contentWrapperHeight = $("#content-wrapper").height();
+        var $sidemenu = $("#sw-sidemenu");
+        var isSidemenuSmallerThanContent = $sidemenu.height() < contentWrapperHeight;
+        if (isSidemenuSmallerThanContent) {
+            $sidemenu.height(contentWrapperHeight);
+        }
+
+        if ($sidemenu.height() < $mainWrapper.height()) {
+            $sidemenu.css({
+                              "height": "100%",
+                              "min-height": "100%"
+                          });
+        }
+    }
+
+})(jQuery);

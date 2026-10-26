@@ -1,0 +1,10 @@
+(function ($) {
+    $(document).ready(function () {
+        $(".copyright").each(function () {
+            var textNode = $(this);
+            var replaceWith = textNode.html().replace(/###COPYRIGHT_YEAR###/g, new Date().getFullYear());
+            textNode.html(replaceWith);
+        });
+
+    });
+})(jQuery);

@@ -1,0 +1,89 @@
+/**
+ * @desc Allows the content area to have its own scrollbar, which makes the Masthead and Title bar always visible.
+ *       This helper is disabled on all GWT pages except for pages that use GwtStandardLayout and pages in the User or FA side.
+ * @author arjayaquino
+ */
+(function ($) {
+    SW.AutoSizeContent = function () {
+        var initialized = false;
+
+        function initAutoSize() {
+            initialized = true;
+
+            $(window).on("resize.autosize", function () {
+
+                var newHeight = ($(window).height() - $("#main-wrapper").offset().top) - $("#sw-footer").outerHeight();
+                $("#main-wrapper").css("height", newHeight + "px");
+
+                $(window).trigger("autosizecomplete");
+            });
+
+            $("#main-wrapper").addClass("autosize-on");
+        }
+
+
+        /**
+         * Can be used by GWT pages to make sure this disables or enables itself when needed.
+         * See: GwtDisplay : updateContentAutoSizeHelper()
+         */
+        this.update = function () {
+            if (isAutosSizeAllowed()) {
+                if (initialized) {
+                    $(window).trigger("resize");
+                } else {
+                    initAutoSize();
+                }
+            } else {
+                if (initialized) {
+                    $(window).off(".autosize");
+                    $("#main-wrapper").css("height", "auto");
+                    $("#main-wrapper").removeClass("autosize-on");
+                    initialized = false;
+                }
+            }
+            $("#main-wrapper").scrollTop(0);
+        };
+
+        /**
+         * Used by GWT WidgetScroller when Auto Size Content is enabled.
+         * Use this instead of Window Scroll on non-gwt pages that are not on the user/ FA side if needed.
+         * @param position  relative to the Document
+         */
+        this.scrollToPosition = function (position) {
+
+            if (isAutosSizeAllowed()) {
+                var scrollPos;
+                if (position == 0) {
+                    scrollPos = 0;
+                } else {
+                    //get the real position of the element by using the main-wrapper's scroll position
+                    scrollPos = position + $("#main-wrapper").scrollTop();
+                }
+                //factor in the position of the main-wrapper
+                scrollPos = scrollPos - $("#main-wrapper").offset().top;
+
+                $("#main-wrapper").animate({
+                                               scrollTop: scrollPos
+                                           }, 500);
+            }
+            //scroll the body instead
+            else {
+                $("html, body").animate({
+                                            scrollTop: position
+                                        }, 500);
+            }
+        };
+
+        function isAutosSizeAllowed() {
+            return ($("#main-wrapper").hasClass("force-autosize") || (!SW.isUserSide && !$("#main-wrapper").hasClass("no-autosize") && !$("body").hasClass("popup")));
+        }
+
+    };
+})(jQuery);
+
+var autoSizeContent = new SW.AutoSizeContent();
+
+jQuery(function () {
+    autoSizeContent.update();
+    $(window).trigger("resize");
+});
