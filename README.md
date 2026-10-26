@@ -29,7 +29,6 @@
   - [Running Tests & Typechecking](#running-tests--typechecking)
   - [Mock / Demo Mode](#mock--demo-mode)
 - [User Walkthrough](#user-walkthrough)
-- [CI/CD & Release Pipeline](#cicd--release-pipeline)
 - [Disclaimer](#disclaimer)
 
 ---
@@ -336,17 +335,6 @@ Mock mode simulates multi-grant RSUs, ISOs, ESPP purchases, realistic cost bases
    - Track your growth trajectory in the **Historical PnL & Stock Price** chart.
    - Inspect upcoming vesting dates in the **Grants & Vesting** tab.
    - Experiment with potential exit prices and tax rates in the **Exercise Scenario Calculator**.
-
----
-
-## CI/CD & Release Pipeline
-
-All automated releases and deployments are orchestrated via GitHub Actions (`.github/workflows/deploy-release.yml`):
-
-- **Single Source of Truth for Versioning:** Versioning is driven by `"version"` in the root `package.json`.
-- **Automated Verification:** Every push to `main` runs workspace typechecking (`npm run typecheck`) and all test suites (`npm run test`).
-- **Version-Gated Deployment & Releases:** Both the GitHub Pages deployment and the extension GitHub Release only execute when the root `package.json` version has been updated (or triggered manually with `force_deploy`), preventing redundant releases on minor commits or docs updates.
-- **Extension Release Packaging:** When a version bump occurs, compiles `packages/extension/dist`, creates `shareworks-bridge-extension-vX.Y.Z.zip`, and automatically generates a GitHub Release tagged `vX.Y.Z` with commit comparison logs.
 
 ---
 
